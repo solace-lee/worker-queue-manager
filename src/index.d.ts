@@ -5,6 +5,7 @@ export default class WorkerQueueManager {
     freeWorkers: Set<unknown>;
     defaultDestroyTimer: number;
     countdownTimer: number;
+    comlink: any;
     /**
      * 参数
      * @param {*} workerFile worker方法
@@ -16,7 +17,7 @@ export default class WorkerQueueManager {
      * 自动销毁
      */
     countdown(): void;
-    initQueueManager(): void;
+    initQueueManager(): Promise<void>;
     /**
      * 添加一个任务
      */

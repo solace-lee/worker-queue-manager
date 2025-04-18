@@ -1,12 +1,14 @@
 {
   "name": "worker-queue-manager",
-  "version": "1.0.0",
+  "version": "1.0.4",
   "description": "Worker队列管理工具",
   "main": "./src/index.js",
   "types": "./src/index.d.ts",
+  "type": "module",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "build": "tsc --lib \"esnext, dom\" ./src/index.ts -d"
+    "tsc": "tsc --lib \"esnext, dom\" ./src/index.ts -d",
+    "build": "esbuild ./src/index.ts --bundle --format=esm --external:comlink --outfile=src/index.js"
   },
   "repository": {
     "type": "git",
@@ -20,7 +22,9 @@
   "author": "solace",
   "license": "MIT",
   "dependencies": {
-    "comlink": "^4.4.2",
     "typescript": "^5.8.3"
+  },
+  "devDependencies": {
+    "esbuild": "^0.25.2"
   }
 }
