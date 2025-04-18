@@ -1,0 +1,26 @@
+{
+  "name": "worker-queue-manager",
+  "version": "1.0.0",
+  "description": "Worker队列管理工具",
+  "main": "./src/index.js",
+  "types": "./src/index.d.ts",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "build": "tsc --lib \"es2015, dom\" ./src/index.ts -d"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/solace-lee/proxyStore"
+  },
+  "keywords": [
+    "worker",
+    "queue",
+    "comlink"
+  ],
+  "author": "solace",
+  "license": "MIT",
+  "dependencies": {
+    "comlink": "^4.4.2",
+    "typescript": "^5.8.3"
+  }
+}
