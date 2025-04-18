@@ -56,10 +56,11 @@ export default class WorkerQueueManager {
   /**
    * 添加一个任务
    */
-  go(structure: any, options: any): Promise<any> {
+  go(data: any, options: any): Promise<any> {
     if (!this.workerMap.size) {
       this.initQueueManager()
     }
+    const callName = options.callName || 'exec'
 
     let timer: number
     return new Promise((resolve, reject) => {
@@ -73,7 +74,7 @@ export default class WorkerQueueManager {
               this.freeWorkers.delete(canUseWorkerId)
               const worker = this.workerMap.get(canUseWorkerId)
               const instance = await worker.workerComlink
-              instance.exec(structure, options).then((res: any) => {
+              instance[callName](data, options).then((res: any) => {
                 resolve(res)
               }).catch(reject).finally(() => {
                 clearTimeout(timer)

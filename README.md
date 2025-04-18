@@ -13,6 +13,7 @@
 6. 支持设置worker的并发数量，保障资源尽可能地被利用；
 7. 支持worker资源的自动分配，一旦woker空闲，立即分配给下一个任务；
 8. 你可能需要在webpack中正确配置worker-loader才能正常使用这个库；
+9. 你的woker中需要包装一个exec方法，或在go的opthion.callName中指定某个方法为worker的入口方法；
 
 
 ### 使用

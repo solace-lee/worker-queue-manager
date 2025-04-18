@@ -6,7 +6,7 @@
   "types": "./src/index.d.ts",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "build": "tsc --lib \"es2015, dom\" ./src/index.ts -d"
+    "build": "tsc --lib \"esnext, dom\" ./src/index.ts -d"
   },
   "repository": {
     "type": "git",
