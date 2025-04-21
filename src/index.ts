@@ -8,6 +8,7 @@ export default class WorkerQueueManager {
   defaultDestroyTimer: number
   countdownTimer: number
   comlink: any
+  loading: boolean
   /**
    * 参数
    * @param {*} workerFile worker方法 
@@ -17,6 +18,7 @@ export default class WorkerQueueManager {
   constructor(workerFile: any, defaultDestroyTimer: number = 0, threadCount: number) {
     const comlink = import('comlink')
     if (defaultDestroyTimer > 0 && defaultDestroyTimer < 60000) defaultDestroyTimer = 60000
+    this.loading = false
     this.workerFile = workerFile
     this.threadCount = threadCount || Math.floor(Math.max(navigator.hardwareConcurrency || 2, 2) / 2) || 4
     this.workerMap = new Map()
@@ -43,6 +45,8 @@ export default class WorkerQueueManager {
 
   async initQueueManager() {
     this.countdown()
+    if (this.loading) return
+    this.loading = true
     for (let i = 1; i <= this.threadCount; i++) {
       const worker = new this.workerFile()
       const workerComlink = (await this.comlink).wrap(worker)
@@ -53,6 +57,7 @@ export default class WorkerQueueManager {
       // 添加空闲worker id
       this.freeWorkers.add(i)
     }
+    this.loading = false
   }
 
 
@@ -71,7 +76,7 @@ export default class WorkerQueueManager {
         this.countdown()
         timer = setTimeout(async () => {
           // 判断空闲worker，添加进管理
-          if (this.freeWorkers.size) {
+          if (this.freeWorkers.size && !this.loading) {
             const canUseWorkerId = this.freeWorkers.values().next().value
             if (canUseWorkerId) {
               this.freeWorkers.delete(canUseWorkerId)
