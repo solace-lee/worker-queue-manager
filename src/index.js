@@ -56,7 +56,7 @@ var WorkerQueueManager = class {
   /**
    * 添加一个任务
    */
-  async go(data, options) {
+  async go(data, options = {}) {
     if (!this.workerMap.size) {
       await this.initQueueManager();
     }

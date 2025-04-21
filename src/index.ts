@@ -64,7 +64,7 @@ export default class WorkerQueueManager {
   /**
    * 添加一个任务
    */
-  async go(data: any, options: any): Promise<any> {
+  async go(data: any, options: any = {}): Promise<any> {
     if (!this.workerMap.size) {
       await this.initQueueManager()
     }
