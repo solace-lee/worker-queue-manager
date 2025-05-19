@@ -1,5 +1,11 @@
 // import * as comlink from 'comlink'
 
+interface Options {
+  defaultDestroyTimer: number,
+  threadCount: number,
+  createDuringUse: boolean
+}
+
 export default class WorkerQueueManager {
   workerFile: any
   threadCount: number
@@ -9,24 +15,27 @@ export default class WorkerQueueManager {
   countdownTimer: number
   comlink: any
   loading: boolean
+
   /**
-   * 参数
-   * @param {*} workerFile worker方法 
-   * @param {*} threadCount 核心线程数
-   * @param {*} defaultDestroyTimer 销毁时间 如果传入0，则不自动销毁
+   * 
+   * @param workerFile worker方法
+   * @param options threadCount 核心线程数 | defaultDestroyTimer 销毁时间 如果传入0，则不自动销毁 | createDuringUse 是否在使用时创建worker
+   * @returns WorkerQueueManager
    */
-  constructor(workerFile: any, defaultDestroyTimer: number = 0, threadCount: number) {
+  constructor(workerFile: any, options: Options) {
+    const { defaultDestroyTimer = 0, threadCount = 0, createDuringUse = false } = options || {}
     const comlink = import('comlink')
-    if (defaultDestroyTimer > 0 && defaultDestroyTimer < 60000) defaultDestroyTimer = 60000
     this.loading = false
     this.workerFile = workerFile
     this.threadCount = threadCount || Math.floor(Math.max(navigator.hardwareConcurrency || 2, 2) / 2) || 4
     this.workerMap = new Map()
     this.freeWorkers = new Set()
-    this.defaultDestroyTimer = defaultDestroyTimer
+    this.defaultDestroyTimer = (defaultDestroyTimer > 0 && defaultDestroyTimer < 1000) ? 60000 : defaultDestroyTimer
     this.countdownTimer = 0
     this.comlink = comlink
-    this.initQueueManager()
+    if (!createDuringUse) {
+      this.initQueueManager()
+    }
     return this
   }
 
@@ -63,8 +72,9 @@ export default class WorkerQueueManager {
 
   /**
    * 添加一个任务
+   * options: any = { callName: 'exec' }
    */
-  async go(data: any, options: any = {}): Promise<any> {
+  async go(data: any, options: any = { callName: 'exec' }): Promise<any> {
     if (!this.workerMap.size) {
       await this.initQueueManager()
     }
