@@ -37,11 +37,12 @@ var WorkerQueueManager = class {
     if (!this.defaultDestroyTimer) return;
     if (this.countdownTimer) clearTimeout(this.countdownTimer);
     this.countdownTimer = setTimeout(() => {
-      this.destroy();
+      if (this.workerMap.size && this.freeWorkers.size === this.workerMap.size) {
+        this.destroy();
+      }
     }, this.defaultDestroyTimer);
   }
   async initQueueManager() {
-    this.countdown();
     if (this.loading) return;
     this.loading = true;
     for (let i = 1; i <= this.threadCount; i++) {
@@ -54,6 +55,7 @@ var WorkerQueueManager = class {
       this.freeWorkers.add(i);
     }
     this.loading = false;
+    this.countdown();
   }
   /**
    * 添加一个任务
@@ -67,7 +69,6 @@ var WorkerQueueManager = class {
     let timer;
     return new Promise((resolve, reject) => {
       const putWorker = () => {
-        this.countdown();
         timer = setTimeout(async () => {
           if (this.freeWorkers.size && !this.loading) {
             const canUseWorkerId = this.freeWorkers.values().next().value;
@@ -80,6 +81,7 @@ var WorkerQueueManager = class {
               }).catch(reject).finally(() => {
                 clearTimeout(timer);
                 this.freeWorkers.add(canUseWorkerId);
+                this.countdown();
               });
             }
           } else {

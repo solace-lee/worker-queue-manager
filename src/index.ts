@@ -48,12 +48,13 @@ export default class WorkerQueueManager {
 
     if (this.countdownTimer) clearTimeout(this.countdownTimer)
     this.countdownTimer = setTimeout(() => {
-      this.destroy()
+      if (this.workerMap.size && this.freeWorkers.size === this.workerMap.size) {
+        this.destroy()
+      }
     }, this.defaultDestroyTimer)
   }
 
   async initQueueManager() {
-    this.countdown()
     if (this.loading) return
     this.loading = true
     for (let i = 1; i <= this.threadCount; i++) {
@@ -67,6 +68,7 @@ export default class WorkerQueueManager {
       this.freeWorkers.add(i)
     }
     this.loading = false
+    this.countdown()
   }
 
 
@@ -83,7 +85,6 @@ export default class WorkerQueueManager {
     let timer: number
     return new Promise((resolve, reject) => {
       const putWorker = () => {
-        this.countdown()
         timer = setTimeout(async () => {
           // 判断空闲worker，添加进管理
           if (this.freeWorkers.size && !this.loading) {
@@ -97,6 +98,7 @@ export default class WorkerQueueManager {
               }).catch(reject).finally(() => {
                 clearTimeout(timer)
                 this.freeWorkers.add(canUseWorkerId)
+                this.countdown()
               })
             }
           } else {
