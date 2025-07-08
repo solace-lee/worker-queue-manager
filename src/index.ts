@@ -6,6 +6,13 @@ interface Options {
   createDuringUse: boolean
 }
 
+interface WorkerMapItem {
+  worker: any
+  workerComlink: any
+  timer: Number,
+  uuid?: string | undefined
+}
+
 export default class WorkerQueueManager {
   workerFile: any
   threadCount: number
@@ -15,6 +22,8 @@ export default class WorkerQueueManager {
   countdownTimer: number
   comlink: any
   loading: boolean
+  createDuringUse: boolean
+
 
   /**
    * 
@@ -33,42 +42,52 @@ export default class WorkerQueueManager {
     this.defaultDestroyTimer = (defaultDestroyTimer > 0 && defaultDestroyTimer < 1000) ? 60000 : defaultDestroyTimer
     this.countdownTimer = 0
     this.comlink = comlink
+    this.createDuringUse = createDuringUse
     if (!createDuringUse) {
       this.initQueueManager()
     }
     return this
   }
 
-  /**
-   * 自动销毁
-   */
-  countdown() {
-    // 如果传入0，则不自动销毁
-    if (!this.defaultDestroyTimer) return
-
-    if (this.countdownTimer) clearTimeout(this.countdownTimer)
-    this.countdownTimer = setTimeout(() => {
-      if (this.workerMap.size && this.freeWorkers.size === this.workerMap.size) {
-        this.destroy()
-      }
-    }, this.defaultDestroyTimer)
+  // 创建worker实例
+  async createWorker(obj?: WorkerMapItem) {
+    const worker = new this.workerFile()
+    const workerComlink = (await this.comlink).wrap(worker)
+    const newObj: WorkerMapItem = Object.assign(obj || {}, {
+      worker,
+      workerComlink,
+      timer: 0,
+      uuid: undefined
+    })
+    // 如果当前是使用时创建，并且有销毁时间，则设置定时销毁
+    this.autoDestroy(newObj)
+    return newObj
   }
 
+  // 自动销毁worker实例
+  autoDestroy(obj: WorkerMapItem) {
+    if (this.defaultDestroyTimer && this.createDuringUse) {
+      obj.timer = setTimeout(() => {
+        obj.worker.terminate()
+        obj.worker = null
+        obj.workerComlink = null
+        obj.uuid = undefined
+      }, (this.defaultDestroyTimer + 1000))
+    }
+  }
+
+  // 初始化worker队列
   async initQueueManager() {
     if (this.loading) return
     this.loading = true
     for (let i = 1; i <= this.threadCount; i++) {
-      const worker = new this.workerFile()
-      const workerComlink = (await this.comlink).wrap(worker)
-      this.workerMap.set(i, {
-        worker,
-        workerComlink: new workerComlink()
-      })
+      // const worker = new this.workerFile()
+      // const workerComlink = (await this.comlink).wrap(worker)
+      this.workerMap.set(i, await this.createWorker())
       // 添加空闲worker id
       this.freeWorkers.add(i)
     }
     this.loading = false
-    this.countdown()
   }
 
 
@@ -81,25 +100,37 @@ export default class WorkerQueueManager {
       await this.initQueueManager()
     }
     const callName = options.callName || 'exec'
+    const uuid = options.uuid || undefined
 
-    let timer: number
+    let goTimer: number
     return new Promise((resolve, reject) => {
       const putWorker = () => {
-        timer = setTimeout(async () => {
+        goTimer = setTimeout(async () => {
           // 判断空闲worker，添加进管理
           if (this.freeWorkers.size && !this.loading) {
             const canUseWorkerId = this.freeWorkers.values().next().value
             if (canUseWorkerId) {
               this.freeWorkers.delete(canUseWorkerId)
-              const worker = this.workerMap.get(canUseWorkerId)
-              const instance = await worker.workerComlink
-              instance[callName](data, options).then((res: any) => {
-                resolve(res)
-              }).catch(reject).finally(() => {
-                clearTimeout(timer)
-                this.freeWorkers.add(canUseWorkerId)
-                this.countdown()
-              })
+              const obj = this.workerMap.get(canUseWorkerId)
+              const { workerComlink, timer: itemTimer, worker } = obj
+              obj.uuid = uuid
+              // 暂停自动销毁
+              itemTimer && clearTimeout(itemTimer)
+              // 判断当前实例是否存在
+              if (!worker) {
+                await this.createWorker(obj)
+              }
+              const instance = await workerComlink
+              instance[callName](data, options)
+                .then((res: any) => {
+                  resolve(res)
+                })
+                .catch(reject)
+                .finally(() => {
+                  // 定时自动销毁
+                  this.autoDestroy(obj)
+                  this.freeWorkers.add(canUseWorkerId)
+                })
             }
           } else {
             putWorker()
@@ -113,12 +144,17 @@ export default class WorkerQueueManager {
   /**
   * 销毁worker
   */
-  destroy() {
+  destroy(uuid?: string | undefined) {
     this.workerMap.forEach(item => {
+      if (uuid && item.uuid !== uuid) {
+        return
+      }
+      item.timer && clearTimeout(item.timer)
       item.worker.terminate()
       item.worker = null
       item.workerComlink = null
     })
+    if (uuid) return
     this.workerMap.clear()
     this.freeWorkers.clear()
   }
