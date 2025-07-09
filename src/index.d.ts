@@ -3,6 +3,12 @@ interface Options {
     threadCount: number;
     createDuringUse: boolean;
 }
+interface WorkerMapItem {
+    worker: any;
+    workerComlink: any;
+    timer: Number;
+    uuid?: string | undefined;
+}
 export default class WorkerQueueManager {
     workerFile: any;
     threadCount: number;
@@ -12,6 +18,7 @@ export default class WorkerQueueManager {
     countdownTimer: number;
     comlink: any;
     loading: boolean;
+    createDuringUse: boolean;
     /**
      *
      * @param workerFile worker方法
@@ -19,10 +26,8 @@ export default class WorkerQueueManager {
      * @returns WorkerQueueManager
      */
     constructor(workerFile: any, options: Options);
-    /**
-     * 自动销毁
-     */
-    countdown(): void;
+    createWorker(obj?: WorkerMapItem): Promise<WorkerMapItem>;
+    autoDestroy(obj: WorkerMapItem): void;
     initQueueManager(): Promise<void>;
     /**
      * 添加一个任务
@@ -32,6 +37,6 @@ export default class WorkerQueueManager {
     /**
     * 销毁worker
     */
-    destroy(): void;
+    destroy(uuid?: string | undefined): void;
 }
 export {};

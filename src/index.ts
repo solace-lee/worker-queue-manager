@@ -55,7 +55,7 @@ export default class WorkerQueueManager {
     const workerComlink = (await this.comlink).wrap(worker)
     const newObj: WorkerMapItem = Object.assign(obj || {}, {
       worker,
-      workerComlink,
+      workerComlink: new workerComlink(),
       timer: 0,
       uuid: undefined
     })
@@ -66,7 +66,7 @@ export default class WorkerQueueManager {
 
   // 自动销毁worker实例
   autoDestroy(obj: WorkerMapItem) {
-    if (this.defaultDestroyTimer && this.createDuringUse) {
+    if (this.defaultDestroyTimer) {
       obj.timer = setTimeout(() => {
         obj.worker.terminate()
         obj.worker = null
@@ -102,31 +102,30 @@ export default class WorkerQueueManager {
     const callName = options.callName || 'exec'
     const uuid = options.uuid || undefined
 
-    let goTimer: number
     return new Promise((resolve, reject) => {
       const putWorker = () => {
-        goTimer = setTimeout(async () => {
+        setTimeout(async () => {
           // 判断空闲worker，添加进管理
           if (this.freeWorkers.size && !this.loading) {
             const canUseWorkerId = this.freeWorkers.values().next().value
             if (canUseWorkerId) {
               this.freeWorkers.delete(canUseWorkerId)
               const obj = this.workerMap.get(canUseWorkerId)
-              const { workerComlink, timer: itemTimer, worker } = obj
-              obj.uuid = uuid
-              // 暂停自动销毁
-              itemTimer && clearTimeout(itemTimer)
               // 判断当前实例是否存在
-              if (!worker) {
+              if (!obj.worker) {
                 await this.createWorker(obj)
               }
-              const instance = await workerComlink
+              obj.uuid = uuid
+              // 暂停自动销毁
+              obj.timer && clearTimeout(obj.timer)
+              const instance = await obj.workerComlink
               instance[callName](data, options)
                 .then((res: any) => {
                   resolve(res)
                 })
                 .catch(reject)
                 .finally(() => {
+                  obj.uuid = undefined
                   // 定时自动销毁
                   this.autoDestroy(obj)
                   this.freeWorkers.add(canUseWorkerId)
@@ -149,8 +148,9 @@ export default class WorkerQueueManager {
       if (uuid && item.uuid !== uuid) {
         return
       }
+      item.uuid = undefined
       item.timer && clearTimeout(item.timer)
-      item.worker.terminate()
+      item.worker?.terminate()
       item.worker = null
       item.workerComlink = null
     })
