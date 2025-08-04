@@ -167,7 +167,7 @@ function createWorkerQueueManager() {
     * 销毁worker
     */
     destroy(uuid?: string | undefined) {
-      this.workerMap.forEach(item => {
+      this.workerMap.forEach((item, canUseWorkerId) => {
         if (uuid && item.uuid !== uuid) {
           return
         }
@@ -176,6 +176,7 @@ function createWorkerQueueManager() {
         item.worker?.terminate()
         item.worker = null
         item.workerComlink = null
+        this.freeWorkers.add(canUseWorkerId)
       })
       this.undateVmCount()
     }
