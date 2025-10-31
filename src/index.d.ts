@@ -21,6 +21,7 @@ declare const _default: {
         loading: boolean;
         priority: boolean;
         vmKey: string;
+        timeoutPool: Set<number>;
         createWorker(obj?: WorkerMapItem): Promise<WorkerMapItem>;
         autoDestroy(obj: WorkerMapItem): void;
         initQueueManager(): Promise<void>;

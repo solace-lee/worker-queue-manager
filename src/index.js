@@ -32,6 +32,8 @@ function createWorkerQueueManager() {
     // 任务是否优先,true则不受全局最大任务数量的限制
     vmKey;
     // 实例key
+    timeoutPool;
+    // 超时池
     /**
      * 
      * @param workerFile worker方法
@@ -47,6 +49,7 @@ function createWorkerQueueManager() {
       this.workerFile = workerFile;
       this.threadCount = threadCount || Math.floor(Math.max(navigator.hardwareConcurrency || 2, 2) / 2) || 4;
       this.workerMap = /* @__PURE__ */ new Map();
+      this.timeoutPool = /* @__PURE__ */ new Set();
       this.freeWorkers = /* @__PURE__ */ new Set();
       this.vmKey = Math.random().toString(36);
       this.defaultDestroyTimer = defaultDestroyTimer > 0 && defaultDestroyTimer < 1e3 ? 1e4 : defaultDestroyTimer;
@@ -105,7 +108,8 @@ function createWorkerQueueManager() {
       const uuid = options.uuid || void 0;
       return new Promise((resolve, reject) => {
         const putWorker = () => {
-          setTimeout(async () => {
+          const timeoutId = setTimeout(async () => {
+            this.timeoutPool.delete(timeoutId);
             if (this.freeWorkers.size && !this.loading && (this.priority || opts.getPass())) {
               const canUseWorkerId = this.freeWorkers.values().next().value;
               if (canUseWorkerId) {
@@ -131,6 +135,7 @@ function createWorkerQueueManager() {
               putWorker();
             }
           }, 100);
+          this.timeoutPool.add(timeoutId);
         };
         putWorker();
       });
@@ -145,6 +150,12 @@ function createWorkerQueueManager() {
     * 销毁worker
     */
     destroy(uuid) {
+      if (!uuid) {
+        this.timeoutPool.forEach((timeoutId) => {
+          clearTimeout(timeoutId);
+        });
+        this.timeoutPool.clear();
+      }
       this.workerMap.forEach((item, canUseWorkerId) => {
         if (uuid && item.uuid !== uuid) {
           return;
