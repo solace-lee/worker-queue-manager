@@ -125,7 +125,9 @@ function createWorkerQueueManager() {
                 instance[callName](data, options).then((res) => {
                   resolve(res);
                 }).catch(reject).finally(() => {
-                  obj.uuid = void 0;
+                  if (this.defaultDestroyTimer > 0) {
+                    obj.uuid = void 0;
+                  }
                   this.autoDestroy(obj);
                   this.freeWorkers.add(canUseWorkerId);
                   this.undateVmCount();
@@ -145,6 +147,12 @@ function createWorkerQueueManager() {
      */
     undateVmCount() {
       globalVmCount.set(this.vmKey, this.workerMap.size - this.freeWorkers.size);
+    }
+    // 根据uuid获取实例
+    getInstanceByUUID(uuid) {
+      if (!uuid) return;
+      const obj = Array.from(this.workerMap.values()).find((item) => item.uuid === uuid);
+      return obj?.workerComlink;
     }
     /**
     * 销毁worker

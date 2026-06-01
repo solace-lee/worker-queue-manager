@@ -34,6 +34,7 @@ declare const _default: {
          * 更新当前实例负载情况
          */
         undateVmCount(): void;
+        getInstanceByUUID(uuid: string | undefined): any;
         /**
         * 销毁worker
         */
